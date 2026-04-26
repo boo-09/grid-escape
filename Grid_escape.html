@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>GRID ESCAPE</title>
+<link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css">
+<script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#1a1a18;color:#F1EFE8;
+  font-family:'Share Tech Mono','Courier New',monospace;
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100vh;padding:20px;
+}
+#py-loading{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;height:70vh;gap:20px;
+}
+#py-loading p{font-family:'VT323',monospace;font-size:26px;color:#888780;letter-spacing:3px;}
+#py-loading small{font-size:12px;color:#555;}
+.spinner{
+  width:40px;height:40px;border:3px solid #333;
+  border-top-color:#1D9E75;border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+#game-wrap{display:none;width:100%;max-width:560px;}
+#header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+#game-title{font-family:'VT323',monospace;font-size:32px;letter-spacing:3px;color:#F1EFE8;}
+#stats{display:flex;gap:8px;flex-wrap:wrap;}
+.stat{background:#2C2C2A;border:1px solid #444;border-radius:6px;padding:4px 10px;font-size:11px;color:#888780;}
+.stat span{color:#F1EFE8;font-weight:bold;}
+#grid-wrapper{position:relative;}
+#grid{
+  display:grid;grid-template-columns:repeat(12,1fr);
+  gap:1px;background:#111;border:1px solid #333;
+  border-radius:6px;overflow:hidden;width:100%;
+}
+.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(9px,3.5vw,18px);}
+.c-wall    {background:#111;}
+.c-path    {background:#1e1e1c;}
+.c-obstacle{background:#633806;color:#FAC775;}
+.c-player  {background:#1D9E75;color:#fff;}
+.c-enemy   {background:#D85A30;color:#fff;}
+#gauge-wrap{height:5px;background:#2C2C2A;border-radius:3px;margin-top:4px;overflow:hidden;}
+#gauge-bar {height:100%;background:#D85A30;width:100%;}
+#overlay{
+  display:none;position:absolute;inset:0;background:rgba(0,0,0,0.82);
+  align-items:center;justify-content:center;flex-direction:column;
+  gap:12px;border-radius:6px;z-index:10;
+}
+#overlay.show{display:flex;}
+#overlay-title{
+  font-family:'VT323',monospace;font-size:52px;
+  color:#D85A30;letter-spacing:4px;
+  animation:flicker 0.8s ease-in-out infinite alternate;
+}
+@keyframes flicker{from{opacity:1}to{opacity:0.55}}
+#overlay-msg{font-size:12px;color:#888780;text-align:center;line-height:2;white-space:pre-line;}
+#restart-btn{
+  background:transparent;border:1px solid #888;border-radius:6px;
+  padding:10px 28px;font-family:'Share Tech Mono',monospace;
+  font-size:14px;color:#F1EFE8;cursor:pointer;
+  transition:all 0.15s;margin-top:4px;letter-spacing:1px;
+}
+#restart-btn:hover{background:#2C2C2A;border-color:#F1EFE8;}
+#controls{margin-top:14px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
+#dpad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:3px;}
+.dpad-btn{
+  background:#2C2C2A;border:1px solid #444;border-radius:6px;
+  font-size:16px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;color:#F1EFE8;user-select:none;-webkit-user-select:none;
+  transition:background 0.1s;
+}
+.dpad-btn:active{background:#444;transform:scale(0.93);}
+.dpad-empty{visibility:hidden;}
+#legend{flex:1;min-width:140px;display:flex;flex-direction:column;gap:7px;padding-top:4px;}
+.leg{font-size:11px;color:#888780;display:flex;align-items:center;gap:8px;}
+.dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div id="py-loading">
+  <div class="spinner"></div>
+  <p>LOADING PYTHON...</p>
+  <small>初回は10〜20秒かかります</small>
+</div>
+
+<div id="game-wrap">
+  <div id="header">
+    <div id="game-title">GRID ESCAPE</div>
+    <div id="stats">
+      <div class="stat">STEP <span id="step-count">0</span></div>
+      <div class="stat">TIME <span id="time-val">0s</span></div>
+      <div class="stat">SPEED <span id="speed-val">800ms</span></div>
+    </div>
+  </div>
+  <div id="grid-wrapper">
+    <div id="grid"></div>
+    <div id="gauge-wrap"><div id="gauge-bar"></div></div>
+    <div id="overlay">
+      <div id="overlay-title">GAME OVER</div>
+      <div id="overlay-msg"></div>
+      <button id="restart-btn">▶ RESTART</button>
+    </div>
+  </div>
+  <div id="controls">
+    <div id="dpad">
+      <div class="dpad-empty"></div>
+      <button class="dpad-btn" id="btn-up">▲</button>
+      <div class="dpad-empty"></div>
+      <button class="dpad-btn" id="btn-left">◀</button>
+      <div class="dpad-empty"></div>
+      <button class="dpad-btn" id="btn-right">▶</button>
+      <div class="dpad-empty"></div>
+      <button class="dpad-btn" id="btn-down">▼</button>
+      <div class="dpad-empty"></div>
+    </div>
+    <div id="legend">
+      <div class="leg"><div class="dot" style="background:#1D9E75"></div>◉ あなた（WASD / 矢印キー）</div>
+      <div class="leg"><div class="dot" style="background:#D85A30"></div>✦ Alien（追跡してくる）</div>
+      <div class="leg"><div class="dot" style="background:#633806"></div>▪ 障害物</div>
+      <div class="leg" style="margin-top:4px;">[ R ] リスタート</div>
+    </div>
+  </div>
+</div>
+
+<script type="py">
+from pyscript import document, window
+from abc import ABCMeta, abstractmethod
+from pyodide.ffi import create_proxy
+from js import setTimeout, clearTimeout, setInterval, clearInterval, Date
+import random
+
+# ============================================================
+# 元のPythonコード: 抽象クラス
+# ============================================================
+
+class Attribute(metaclass=ABCMeta):
+    @abstractmethod
+    def get_name(self): pass
+    @abstractmethod
+    def get_no(self): pass
+    @abstractmethod
+    def coord(self): pass
+
+class Behavior(metaclass=ABCMeta):
+    @abstractmethod
+    def move(self): pass
+    @abstractmethod
+    def reset(self): pass
+
+
+# ============================================================
+# 元のPythonコード: Environment
+# 通路:0, 壁:1, 障害物:2, プレイヤー:9, エネミー:8
+# ============================================================
+
+class Environment:
+    BASE = [
+        [1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,2,2,2,2,1],
+        [1,0,2,2,0,1,0,0,0,0,0,1],
+        [1,0,0,2,0,2,2,0,0,2,2,1],
+        [1,0,0,0,0,2,2,0,2,0,0,1],
+        [1,2,0,2,0,0,2,0,0,0,0,1],
+        [1,0,0,2,2,0,2,2,2,0,2,1],
+        [1,0,0,0,2,0,0,0,2,0,0,1],
+        [1,0,0,2,2,2,2,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1],
+    ]
+    GRID = [row[:] for row in BASE]
+
+    @classmethod
+    def reset(cls):
+        cls.GRID = [row[:] for row in cls.BASE]
+
+
+# ============================================================
+# 元のPythonコード: Agent
+# ============================================================
+
+class Agent(Attribute, Behavior):
+    def __init__(self, name: str, no: int, x: int, y: int):
+        self.__name = name
+        self.__no   = no
+        self.__x    = x
+        self.__y    = y
+
+    def get_name(self) -> str: return self.__name
+    def get_no(self)   -> int: return self.__no
+
+    @property
+    def coord(self): return [self.__x, self.__y]
+
+    @coord.setter
+    def coord(self, position):
+        self.__x = position[0]
+        self.__y = position[1]
+
+    def collision(self, diff_y: int, diff_x: int) -> bool:
+        return Environment.GRID[self.__y + diff_y][self.__x + diff_x] in (0,8,9)
+
+    def move(self, vertical: int, horizontal: int):
+        if self.collision(vertical, horizontal):
+            self.__y += vertical
+            self.__x += horizontal
+
+    def action(self, num: int):
+        if   num == 0: self.move(-1,  0)
+        elif num == 1: self.move( 1,  0)
+        elif num == 2: self.move( 0, -1)
+        elif num == 3: self.move( 0,  1)
+
+
+# ============================================================
+# 元のPythonコード: Friend (プレイヤーとして使用)
+# ============================================================
+
+class Friend(Agent):
+    def __init__(self, name: str, no: int, x: int, y: int):
+        super().__init__(name, no, x, y)
+
+    def action(self, num: int):
+        Environment.GRID[self.coord[1]][self.coord[0]] = 0
+        if   num == 0: self.move(-1,  0)
+        elif num == 1: self.move( 1,  0)
+        elif num == 2: self.move( 0, -1)
+        elif num == 3: self.move( 0,  1)
+        Environment.GRID[self.coord[1]][self.coord[0]] = 9
+
+    def reset(self, x: int, y: int):
+        self.coord = [x, y]
+
+
+# ============================================================
+# 元のPythonコード: Enemy (+ 追跡ロジック追加)
+# ============================================================
+
+class Enemy(Agent):
+    def __init__(self, name: str, no: int, x: int, y: int):
+        super().__init__(name, no, x, y)
+
+    def action(self, num: int):
+        Environment.GRID[self.coord[1]][self.coord[0]] = 0
+        if   num == 0: self.move(-1, -1)
+        elif num == 1: self.move( 1,  1)
+        elif num == 2: self.move( 1, -1)
+        elif num == 3: self.move(-1,  1)
+        Environment.GRID[self.coord[1]][self.coord[0]] = 8
+
+    def chase_action(self, target_x: int, target_y: int):
+        ax, ay = self.coord
+        diagonals = [(0,-1,-1),(1,1,1),(2,1,-1),(3,-1,1)]
+        diagonals.sort(key=lambda c:
+            abs(target_y-(ay+c[1])) + abs(target_x-(ax+c[2]))
+        )
+        for num, dy, dx in diagonals:
+            ny, nx = ay+dy, ax+dx
+            if 0<=ny<12 and 0<=nx<12 and Environment.GRID[ny][nx] in (0, 9):
+                self.action(num)
+                return
+        straights = [(-1,0),(1,0),(0,-1),(0,1)]
+        straights.sort(key=lambda d:
+            abs(target_y-(ay+d[0])) + abs(target_x-(ax+d[1]))
+        )
+        for dy, dx in straights:
+            ny, nx = ay+dy, ax+dx
+            if 0<=ny<12 and 0<=nx<12 and Environment.GRID[ny][nx] in (0, 9):
+                Environment.GRID[ay][ax] = 0
+                self.coord = [ax+dx, ay+dy]
+                Environment.GRID[self.coord[1]][self.coord[0]] = 8
+                return
+
+    def reset(self, x: int, y: int):
+        self.coord = [x, y]
+
+
+# ============================================================
+# タイマー管理クラス
+# ============================================================
+
+class Timers:
+    alien_id = None
+    clock_id = None
+    gauge_id = None
+
+    @classmethod
+    def clear_all(cls):
+        if cls.alien_id is not None:
+            clearTimeout(cls.alien_id)
+            cls.alien_id = None
+        if cls.clock_id is not None:
+            clearInterval(cls.clock_id)
+            cls.clock_id = None
+        if cls.gauge_id is not None:
+            clearInterval(cls.gauge_id)
+            cls.gauge_id = None
+
+
+# ============================================================
+# ゲーム状態
+# ============================================================
+
+class G:
+    player         = None
+    enemy          = None
+    step           = 0
+    game_over      = False
+    start_time     = 0
+    elapsed_sec    = 0
+    alien_interval = 800
+    gauge_start    = 0
+
+
+# ============================================================
+# 初期化
+# ============================================================
+
+def init_game(*args):
+    Timers.clear_all()
+    Environment.reset()
+
+    G.step           = 0
+    G.game_over      = False
+    G.elapsed_sec    = 0
+    G.alien_interval = 800
+    G.start_time     = Date.now()
+
+    G.player = Friend('Human', 0, 1, 1)
+    G.enemy  = Enemy('Alien',  0, 10, 10)
+    Environment.GRID[1][1]   = 9
+    Environment.GRID[10][10] = 8
+
+    document.getElementById('overlay').classList.remove('show')
+    document.getElementById('overlay-msg').textContent = ''
+    render_grid()
+    update_labels()
+    schedule_alien()
+    start_clock()
+
+
+# ============================================================
+# プレイヤー操作
+# ============================================================
+
+def player_action(num: int):
+    if G.game_over:
+        return
+    G.player.action(num)
+    G.step += 1
+    check_game_over()
+    if not G.game_over:
+        render_grid()
+        update_labels()
+
+
+# ============================================================
+# エネミー移動スケジューラ
+# ============================================================
+
+def schedule_alien():
+    G.gauge_start = Date.now()
+    start_gauge()
+
+    def move_alien(*args):
+        if G.game_over:
+            return
+        px, py = G.player.coord
+        G.enemy.chase_action(px, py)
+        G.alien_interval = max(280, G.alien_interval - 7)
+        check_game_over()
+        if not G.game_over:
+            render_grid()
+            update_labels()
+            schedule_alien()
+
+    Timers.alien_id = setTimeout(create_proxy(move_alien), G.alien_interval)
+
+
+def start_gauge():
+    if Timers.gauge_id is not None:
+        clearInterval(Timers.gauge_id)
+
+    def tick(*args):
+        elapsed = Date.now() - G.gauge_start
+        pct = max(0.0, 100.0 - (elapsed / G.alien_interval) * 100.0)
+        bar = document.getElementById('gauge-bar')
+        if bar:
+            bar.style.width = f'{pct:.1f}%'
+
+    Timers.gauge_id = setInterval(create_proxy(tick), 50)
+
+
+def start_clock():
+    def tick(*args):
+        G.elapsed_sec = int((Date.now() - G.start_time) / 1000)
+        el = document.getElementById('time-val')
+        if el:
+            el.textContent = f'{G.elapsed_sec}s'
+
+    Timers.clock_id = setInterval(create_proxy(tick), 500)
+
+
+# ============================================================
+# ゲームオーバー判定
+# ============================================================
+
+def check_game_over():
+    if G.game_over:
+        return
+    ex, ey = G.enemy.coord
+    px, py = G.player.coord
+    if ex == px and ey == py:
+        G.game_over = True
+        Timers.clear_all()
+        render_grid()  # 最終状態を描画
+        msg = f'Alien に捕まえられた！\nSTEP: {G.step}　　TIME: {G.elapsed_sec}s'
+        document.getElementById('overlay-msg').textContent = msg
+        document.getElementById('overlay').classList.add('show')
+
+
+# ============================================================
+# 描画
+# ============================================================
+
+CELL_CLASS = {
+    0: 'cell c-path',
+    1: 'cell c-wall',
+    2: 'cell c-obstacle',
+    9: 'cell c-player',
+    8: 'cell c-enemy',
+}
+ICONS = {9: '◉', 8: '✦', 2: '▪'}
+
+def render_grid():
+    grid_el = document.getElementById('grid')
+    grid_el.innerHTML = ''
+    for r in range(12):
+        for c in range(12):
+            v   = Environment.GRID[r][c]
+            div = document.createElement('div')
+            div.className   = CELL_CLASS.get(v, 'cell c-path')
+            div.textContent = ICONS.get(v, '')
+            grid_el.appendChild(div)
+
+
+def update_labels():
+    document.getElementById('step-count').textContent = str(G.step)
+    document.getElementById('speed-val').textContent  = f'{G.alien_interval}ms'
+
+
+# ============================================================
+# 入力イベント
+# ============================================================
+
+KEY_MAP = {
+    'ArrowUp': 0, 'w': 0,
+    'ArrowDown': 1, 's': 1,
+    'ArrowLeft': 2, 'a': 2,
+    'ArrowRight': 3, 'd': 3,
+}
+
+def on_keydown(event):
+    key = event.key
+    if key in ('r', 'R'):
+        init_game()
+        return
+    if key in KEY_MAP:
+        event.preventDefault()
+        player_action(KEY_MAP[key])
+
+document.addEventListener('keydown', create_proxy(on_keydown))
+
+document.getElementById('btn-up').addEventListener(
+    'click', create_proxy(lambda e: player_action(0)))
+document.getElementById('btn-down').addEventListener(
+    'click', create_proxy(lambda e: player_action(1)))
+document.getElementById('btn-left').addEventListener(
+    'click', create_proxy(lambda e: player_action(2)))
+document.getElementById('btn-right').addEventListener(
+    'click', create_proxy(lambda e: player_action(3)))
+document.getElementById('restart-btn').addEventListener(
+    'click', create_proxy(init_game))
+
+# ============================================================
+# 起動
+# ============================================================
+document.getElementById('py-loading').style.display = 'none'
+document.getElementById('game-wrap').style.display  = 'block'
+init_game()
+</script>
+
+</body>
+</html>
