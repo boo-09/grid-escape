@@ -224,36 +224,36 @@ class Enemy(Agent):
         super().__init__(name, no, x, y)
 
     def action(self, num: int):
+        # プレイヤーと同じように動くための基本設定
         Environment.GRID[self.coord[1]][self.coord[0]] = 0
-        if   num == 0: self.move(-1, -1)
-        elif num == 1: self.move( 1,  1)
-        elif num == 2: self.move( 1, -1)
-        elif num == 3: self.move(-1,  1)
+        if   num == 0: self.move(-1,  0)
+        elif num == 1: self.move( 1,  0)
+        elif num == 2: self.move( 0, -1)
+        elif num == 3: self.move( 0,  1)
         Environment.GRID[self.coord[1]][self.coord[0]] = 8
 
     def chase_action(self, target_x: int, target_y: int):
         ax, ay = self.coord
         
-        # 全8方向（上下左右＋斜め）の移動パターン
-        directions = [
-            (-1, 0), (1, 0), (0, -1), (0, 1),
-            (-1, -1), (1, 1), (1, -1), (-1, 1)
-        ]
+        # ★ここが重要：斜めを削除し、上下左右の「4方向」のみにする
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         
         candidates = []
         for dy, dx in directions:
             ny, nx = ay + dy, ax + dx
+            # 壁や障害物ではない（通路=0 または プレイヤー=9）なら候補に入れる
             if 0 <= ny < 12 and 0 <= nx < 12 and Environment.GRID[ny][nx] in (0, 9):
-                # マンハッタン距離を計算
+                # プレイヤーまでの距離を計算
                 dist = abs(target_y - ny) + abs(target_x - nx)
                 candidates.append((dist, ny, nx))
                 
+        # どこか移動できるマスがある場合
         if candidates:
-            # 距離が近い順に並べ替え
+            # 距離が一番近い（数字が小さい）マスを先頭にする
             candidates.sort(key=lambda x: x[0])
             best_ny, best_nx = candidates[0][1], candidates[0][2]
             
-            # 移動処理
+            # 実際に移動させる
             Environment.GRID[ay][ax] = 0
             self.coord = [best_nx, best_ny]
             Environment.GRID[best_ny][best_nx] = 8
