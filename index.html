@@ -204,7 +204,7 @@ class Agent(Attribute, Behavior):
         elif num == 2: self.move( 0, -1)
         elif num == 3: self.move( 0,  1)
 
-class Friend(Agent):
+class Player(Agent):
     def __init__(self, name: str, no: int, x: int, y: int):
         super().__init__(name, no, x, y)
 
@@ -298,7 +298,7 @@ def init_game(*args):
     G.alien_interval = 800
     G.start_time     = Date.now()
 
-    G.player = Friend('Human', 0, 1, 1)
+    G.player = Player('Human', 0, 1, 1)
     G.enemy  = Enemy('Alien',  0, 10, 10)
     Environment.GRID[1][1]   = 9
     Environment.GRID[10][10] = 8
