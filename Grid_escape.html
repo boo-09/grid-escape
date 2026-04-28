@@ -136,9 +136,6 @@ from pyodide.ffi import create_proxy
 from js import setTimeout, clearTimeout, setInterval, clearInterval, Date
 import random
 
-# ============================================================
-# 元のPythonコード: 抽象クラス
-# ============================================================
 
 class Attribute(metaclass=ABCMeta):
     @abstractmethod
@@ -153,12 +150,6 @@ class Behavior(metaclass=ABCMeta):
     def move(self): pass
     @abstractmethod
     def reset(self): pass
-
-
-# ============================================================
-# 元のPythonコード: Environment
-# 通路:0, 壁:1, 障害物:2, プレイヤー:9, エネミー:8
-# ============================================================
 
 class Environment:
     BASE = [
@@ -180,12 +171,7 @@ class Environment:
     @classmethod
     def reset(cls):
         cls.GRID = [row[:] for row in cls.BASE]
-
-
-# ============================================================
-# 元のPythonコード: Agent
-# ============================================================
-
+  
 class Agent(Attribute, Behavior):
     def __init__(self, name: str, no: int, x: int, y: int):
         self.__name = name
@@ -218,11 +204,6 @@ class Agent(Attribute, Behavior):
         elif num == 2: self.move( 0, -1)
         elif num == 3: self.move( 0,  1)
 
-
-# ============================================================
-# 元のPythonコード: Friend (プレイヤーとして使用)
-# ============================================================
-
 class Friend(Agent):
     def __init__(self, name: str, no: int, x: int, y: int):
         super().__init__(name, no, x, y)
@@ -237,11 +218,6 @@ class Friend(Agent):
 
     def reset(self, x: int, y: int):
         self.coord = [x, y]
-
-
-# ============================================================
-# 元のPythonコード: Enemy (+ 追跡ロジック追加)
-# ============================================================
 
 class Enemy(Agent):
     def __init__(self, name: str, no: int, x: int, y: int):
@@ -281,11 +257,6 @@ class Enemy(Agent):
     def reset(self, x: int, y: int):
         self.coord = [x, y]
 
-
-# ============================================================
-# タイマー管理クラス
-# ============================================================
-
 class Timers:
     alien_id = None
     clock_id = None
@@ -303,11 +274,6 @@ class Timers:
             clearInterval(cls.gauge_id)
             cls.gauge_id = None
 
-
-# ============================================================
-# ゲーム状態
-# ============================================================
-
 class G:
     player         = None
     enemy          = None
@@ -317,11 +283,6 @@ class G:
     elapsed_sec    = 0
     alien_interval = 800
     gauge_start    = 0
-
-
-# ============================================================
-# 初期化
-# ============================================================
 
 def init_game(*args):
     Timers.clear_all()
@@ -345,11 +306,6 @@ def init_game(*args):
     schedule_alien()
     start_clock()
 
-
-# ============================================================
-# プレイヤー操作
-# ============================================================
-
 def player_action(num: int):
     if G.game_over:
         return
@@ -359,11 +315,6 @@ def player_action(num: int):
     if not G.game_over:
         render_grid()
         update_labels()
-
-
-# ============================================================
-# エネミー移動スケジューラ
-# ============================================================
 
 def schedule_alien():
     G.gauge_start = Date.now()
@@ -407,11 +358,6 @@ def start_clock():
 
     Timers.clock_id = setInterval(create_proxy(tick), 500)
 
-
-# ============================================================
-# ゲームオーバー判定
-# ============================================================
-
 def check_game_over():
     if G.game_over:
         return
@@ -420,15 +366,10 @@ def check_game_over():
     if ex == px and ey == py:
         G.game_over = True
         Timers.clear_all()
-        render_grid()  # 最終状態を描画
+        render_grid()  
         msg = f'Alien に捕まえられた！\nSTEP: {G.step}　　TIME: {G.elapsed_sec}s'
         document.getElementById('overlay-msg').textContent = msg
         document.getElementById('overlay').classList.add('show')
-
-
-# ============================================================
-# 描画
-# ============================================================
 
 CELL_CLASS = {
     0: 'cell c-path',
@@ -454,11 +395,6 @@ def render_grid():
 def update_labels():
     document.getElementById('step-count').textContent = str(G.step)
     document.getElementById('speed-val').textContent  = f'{G.alien_interval}ms'
-
-
-# ============================================================
-# 入力イベント
-# ============================================================
 
 KEY_MAP = {
     'ArrowUp': 0, 'w': 0,
@@ -489,9 +425,6 @@ document.getElementById('btn-right').addEventListener(
 document.getElementById('restart-btn').addEventListener(
     'click', create_proxy(init_game))
 
-# ============================================================
-# 起動
-# ============================================================
 document.getElementById('py-loading').style.display = 'none'
 document.getElementById('game-wrap').style.display  = 'block'
 init_game()
