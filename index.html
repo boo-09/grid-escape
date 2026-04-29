@@ -136,7 +136,6 @@ from pyodide.ffi import create_proxy
 from js import setTimeout, clearTimeout, setInterval, clearInterval, Date
 import random
 
-
 class Attribute(metaclass=ABCMeta):
     @abstractmethod
     def get_name(self): pass
@@ -163,7 +162,6 @@ class Environment:
                     if r == 0 or r == 11 or c == 0 or c == 11:
                         new_grid[r][c] = 1
 
-            
             obstacle_count = 30
             placed = 0
             safe_zones = [
@@ -178,10 +176,9 @@ class Environment:
                     new_grid[r][c] = 2
                     placed += 1
 
-            
             if cls.is_fully_connected(new_grid):
                 cls.GRID = new_grid
-                break  
+                break
 
     @classmethod
     def is_fully_connected(cls, grid):
@@ -203,7 +200,6 @@ class Environment:
                     visited.add((nr, nc))
                     queue.append((nr, nc))
 
-  
         return len(visited) == walkable_count
   
 class Agent(Attribute, Behavior):
@@ -267,21 +263,18 @@ class Enemy(Agent):
 
     def chase_action(self, target_x: int, target_y: int):
         ax, ay = self.coord
-        
         queue = [(ax, ay)]
         came_from = {(ax, ay): None}
-        
         found = False
+        
         while queue:
             curr_x, curr_y = queue.pop(0)
-            
             if curr_x == target_x and curr_y == target_y:
                 found = True
                 break
                 
             for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
                 nx, ny = curr_x + dx, curr_y + dy
-                
                 if 0 <= ny < 12 and 0 <= nx < 12:
                     if Environment.GRID[ny][nx] in (0, 9) and (nx, ny) not in came_from:
                         came_from[(nx, ny)] = (curr_x, curr_y)
@@ -296,7 +289,6 @@ class Enemy(Agent):
             
             if path:
                 next_x, next_y = path[-1]
-
                 Environment.GRID[ay][ax] = 0
                 self.coord = [next_x, next_y]
                 Environment.GRID[next_y][next_x] = 8
@@ -381,7 +373,6 @@ def schedule_alien():
 
     Timers.alien_id = setTimeout(create_proxy(move_alien), G.alien_interval)
 
-
 def start_gauge():
     if Timers.gauge_id is not None:
         clearInterval(Timers.gauge_id)
@@ -394,7 +385,6 @@ def start_gauge():
             bar.style.width = f'{pct:.1f}%'
 
     Timers.gauge_id = setInterval(create_proxy(tick), 50)
-
 
 def start_clock():
     def tick(*args):
@@ -437,7 +427,6 @@ def render_grid():
             div.className   = CELL_CLASS.get(v, 'cell c-path')
             div.textContent = ICONS.get(v, '')
             grid_el.appendChild(div)
-
 
 def update_labels():
     document.getElementById('step-count').textContent = str(G.step)
