@@ -152,25 +152,35 @@ class Behavior(metaclass=ABCMeta):
     def reset(self): pass
 
 class Environment:
-    BASE = [
-        [1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,2,2,2,2,1],
-        [1,0,2,2,0,1,0,0,0,0,0,1],
-        [1,0,0,2,0,2,2,0,0,2,2,1],
-        [1,0,0,0,0,2,2,0,2,0,0,1],
-        [1,2,0,2,0,0,2,0,0,0,0,1],
-        [1,0,0,2,2,0,2,2,2,0,2,1],
-        [1,0,0,0,2,0,0,0,2,0,0,1],
-        [1,0,0,2,2,2,2,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1],
-    ]
-    GRID = [row[:] for row in BASE]
+    GRID = []
 
     @classmethod
     def reset(cls):
-        cls.GRID = [row[:] for row in cls.BASE]
+        new_grid = [[0] * 12 for _ in range(12)]
+        for r in range(12):
+            for c in range(12):
+                if r == 0 or r == 11 or c == 0 or c == 11:
+                    new_grid[r][c] = 1
+
+        obstacle_count = 30
+        placed = 0
+        
+        while placed < obstacle_count:
+            r = random.randint(1, 10)
+            c = random.randint(1, 10)
+            
+            
+            safe_zones = [
+                (1, 1), (1, 2), (2, 1),       
+                (10, 10), (9, 10), (10, 9)    
+            ]
+            
+            
+            if (r, c) not in safe_zones and new_grid[r][c] == 0:
+                new_grid[r][c] = 2
+                placed += 1
+
+        cls.GRID = new_grid
   
 class Agent(Attribute, Behavior):
     def __init__(self, name: str, no: int, x: int, y: int):
