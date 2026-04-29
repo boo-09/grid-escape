@@ -268,22 +268,38 @@ class Enemy(Agent):
     def chase_action(self, target_x: int, target_y: int):
         ax, ay = self.coord
         
-        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        queue = [(ax, ay)]
+        came_from = {(ax, ay): None}
         
-        candidates = []
-        for dy, dx in directions:
-            ny, nx = ay + dy, ax + dx
-            if 0 <= ny < 12 and 0 <= nx < 12 and Environment.GRID[ny][nx] in (0, 9):
-                dist = abs(target_y - ny) + abs(target_x - nx)
-                candidates.append((dist, ny, nx))
-                
-        if candidates:
-            candidates.sort(key=lambda x: x[0])
-            best_ny, best_nx = candidates[0][1], candidates[0][2]
+        found = False
+        while queue:
+            curr_x, curr_y = queue.pop(0)
             
-            Environment.GRID[ay][ax] = 0
-            self.coord = [best_nx, best_ny]
-            Environment.GRID[best_ny][best_nx] = 8
+            if curr_x == target_x and curr_y == target_y:
+                found = True
+                break
+                
+            for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+                nx, ny = curr_x + dx, curr_y + dy
+                
+                if 0 <= ny < 12 and 0 <= nx < 12:
+                    if Environment.GRID[ny][nx] in (0, 9) and (nx, ny) not in came_from:
+                        came_from[(nx, ny)] = (curr_x, curr_y)
+                        queue.append((nx, ny))
+        
+        if found:
+            curr = (target_x, target_y)
+            path = []
+            while curr != (ax, ay):
+                path.append(curr)
+                curr = came_from[curr]
+            
+            if path:
+                next_x, next_y = path[-1]
+
+                Environment.GRID[ay][ax] = 0
+                self.coord = [next_x, next_y]
+                Environment.GRID[next_y][next_x] = 8
 
     def reset(self, x: int, y: int):
         self.coord = [x, y]
